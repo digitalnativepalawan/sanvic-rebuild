@@ -162,7 +162,7 @@ function TodayContent({
             Worth it right now
           </h2>
           <Link to="/explore" className="text-sm text-tide-300 hover:text-tide-400">
-            Explore all →
+            Open Explorer →
           </Link>
         </div>
         <div className="space-y-3">

@@ -16,9 +16,10 @@ Supabase-ready when you are, and importable into Lovable as-is.
 | Screen | Purpose |
 | --- | --- |
 | **Today** (`/`) | The launch screen is the living San Vicente map — barangay lines and destination pins visible immediately — with today's ranked recommendations (time-of-day and weather aware) as a map-connected overlay: floating side panel on desktop, peek-height bottom sheet on mobile. Greeting, weather + sunset, Ask Tala, and the top local signal live in the overlay; every card's "View on map" focuses its pin in place. |
-| **Explore** (`/explore`) | Full-catalogue discovery on the same map. Desktop: place list + map side by side. Mobile: full-bleed map with floating category chips and a bottom sheet. Pins are category-coded (color + icon), matching the chips. |
-| **Trip** (`/trip`) | Saved places organized into Today / Tomorrow / Later, with a suggested visiting order from Poblacion. Local-first, anonymous session — no login. |
+| **Explorer** (`/explore`) | Full-catalogue discovery on the same map. Desktop: place list + map side by side. Mobile: full-bleed map with floating category chips and a bottom sheet. Pins are category-coded (color + icon), matching the chips. |
 | **Pulse** (`/pulse`) | Local Updates, not a social feed: beach conditions, sunset window, boat status, road updates, food tips, events. Live weather becomes a first-class update when available. |
+| **My Trip** (`/trip`) | Your favorite spots and personal plan — saved places organized into Today / Tomorrow / Later, with a suggested visiting order from Poblacion. Local-first, anonymous session — no login. |
+| **Locate** (nav button) | Asks the browser for your position, jumps to the map, and shows a pulsing "you are here" dot with an accuracy circle — so you can orient yourself and get directions. Gracefully reports denied permission or an out-of-Palawan fix. |
 | **Place detail** (`/place/:slug`) | Full detail: photo (with designed fallback), rating, barangay, travel time from Poblacion, best time/season, tags, Directions / Save / Ask Tala / Book–Contact / View on map. |
 | **Admin** (`/admin`) | Passkey-gated content management: places, Today recommendations, Pulse updates, and barangays — fully editable without Supabase (local drafts) and write-through when Supabase is connected. |
 

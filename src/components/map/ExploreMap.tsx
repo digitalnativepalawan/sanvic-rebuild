@@ -9,6 +9,8 @@ import { getSanVicenteBounds, getPalawanMaxBounds } from "@/lib/mapBounds";
 import { BarangayBoundaryLayer } from "./BarangayBoundaryLayer";
 import { MapLayerControls, type MapLayers } from "./MapLayerControls";
 import { MAP_STYLES, loadMapStyle, saveMapStyle, type MapStyleId } from "./mapStyles";
+import { UserLocationLayer } from "./UserLocationLayer";
+import { LocationStatusChip } from "./LocationStatusChip";
 
 // The SANVIC map: category-coded place pins over the barangay boundary
 // layer, with Poblacion as the fixed reference point every travel time is
@@ -137,9 +139,11 @@ export function ExploreMap({
           </Tooltip>
         </Marker>
         {markers}
+        <UserLocationLayer />
         <FlyTo place={selected} />
         <InvalidateOnResize />
       </MapContainer>
+      <LocationStatusChip className="absolute left-1/2 top-16 z-[1000] -translate-x-1/2 md:top-3" />
       <MapLayerControls
         layers={layers}
         onChange={setLayers}

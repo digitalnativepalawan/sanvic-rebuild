@@ -127,6 +127,43 @@
   box-shadow: 0 0 10px rgba(236, 207, 158, 0.45);
 }
 
+/* User location marker: pulsing aqua dot ("you are here") */
+.sanvic-user-marker {
+  position: relative;
+  width: 18px;
+  height: 18px;
+}
+.sanvic-user-marker > span {
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  background: #22d3ee;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.7);
+}
+.sanvic-user-marker::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.4);
+  animation: sanvic-pulse 2s ease-out infinite;
+}
+@keyframes sanvic-pulse {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
 /* Thin scrollbars on panels */
 .scroll-thin::-webkit-scrollbar {
   width: 6px;
