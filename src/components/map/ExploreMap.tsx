@@ -25,10 +25,11 @@ import { LocationStatusChip } from "./LocationStatusChip";
 // barangay boundary GeoJSON (+ valid place coordinates), and panning is
 // hard-limited to the Palawan region.
 //
-// Progressive disclosure keeps the overview beautiful instead of clustered:
-// at municipality zoom the destinations render as a quiet constellation of
-// small glowing category-colored dots; zooming in graduates featured places
-// and then everything to full pins. The selected place is always a full pin.
+// Progressive disclosure keeps the overview beautiful instead of clustered,
+// but every marker is always the same shape — a small teardrop with its
+// category's Lucide icon inside. Only the size steps down at low zoom
+// (smaller still for non-featured places); nothing ever switches to a
+// plain dot, so the map never mixes two marker languages at once.
 
 type MarkerTier = "far" | "mid" | "near";
 
@@ -38,24 +39,21 @@ function tierForZoom(zoom: number): MarkerTier {
   return "far";
 }
 
-function dotIcon(place: Place, size: number): L.DivIcon {
-  const meta = categoryMeta(place.category);
-  return L.divIcon({
-    className: "",
-    html: `<div class="sanvic-dot" style="width:${size}px;height:${size}px;background:${meta.color};box-shadow:0 0 ${size}px ${meta.color}99"></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  });
-}
+const TIER_SIZE: Record<MarkerTier, { featured: number; normal: number }> = {
+  near: { featured: 24, normal: 22 },
+  mid: { featured: 20, normal: 17 },
+  far: { featured: 16, normal: 14 },
+};
 
 function teardropIcon(place: Place, size: number, active: boolean): L.DivIcon {
   const meta = categoryMeta(place.category);
+  const iconPx = active ? 15 : Math.max(8, Math.round(size * 0.45));
   const iconSvg = renderToStaticMarkup(
-    <meta.icon size={active ? 15 : 11} color="#fff" strokeWidth={2.5} />,
+    <meta.icon size={iconPx} color="#fff" strokeWidth={2.5} />,
   );
   return L.divIcon({
     className: "",
-    html: `<div class="sanvic-pin ${active ? "sanvic-pin--active" : ""}" style="background:${meta.color}">${iconSvg}</div>`,
+    html: `<div class="sanvic-pin ${active ? "sanvic-pin--active" : ""}" style="width:${size}px;height:${size}px;background:${meta.color}">${iconSvg}</div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size - 2],
   });
@@ -63,9 +61,8 @@ function teardropIcon(place: Place, size: number, active: boolean): L.DivIcon {
 
 function placeIcon(place: Place, active: boolean, tier: MarkerTier): L.DivIcon {
   if (active) return teardropIcon(place, 34, true);
-  if (tier === "near") return teardropIcon(place, 22, false);
-  if (tier === "mid") return place.isFeatured ? teardropIcon(place, 20, false) : dotIcon(place, 9);
-  return dotIcon(place, place.isFeatured ? 10 : 8);
+  const size = place.isFeatured ? TIER_SIZE[tier].featured : TIER_SIZE[tier].normal;
+  return teardropIcon(place, size, false);
 }
 
 // Publishes the current zoom so markers can re-tier on zoomend.

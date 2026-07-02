@@ -105,18 +105,6 @@
   box-shadow: 0 3px 14px rgba(2, 12, 27, 0.7), 0 0 18px rgba(34, 211, 238, 0.35);
 }
 
-/* Constellation dots: the zoomed-out form of destination markers. Small
-   glowing category-colored points so the municipality overview reads as a
-   night-sky map, not a cluster of badges. */
-.sanvic-dot {
-  border-radius: 999px;
-  border: 1.5px solid rgba(255, 255, 255, 0.85);
-  transition: transform 0.15s ease;
-}
-.sanvic-dot:hover {
-  transform: scale(1.5);
-}
-
 /* Barangay boundary labels: quiet uppercase tags on navy glass */
 .sanvic-brgy-label {
   display: inline-block;
