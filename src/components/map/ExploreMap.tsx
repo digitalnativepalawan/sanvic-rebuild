@@ -8,7 +8,14 @@ import { POBLACION } from "@/data/places";
 import { getSanVicenteBounds, getPalawanMaxBounds } from "@/lib/mapBounds";
 import { BarangayBoundaryLayer } from "./BarangayBoundaryLayer";
 import { MapLayerControls, type MapLayers } from "./MapLayerControls";
-import { MAP_STYLES, loadMapStyle, saveMapStyle, type MapStyleId } from "./mapStyles";
+import {
+  MAP_STYLES,
+  loadBarangaysVisible,
+  loadMapStyle,
+  saveBarangaysVisible,
+  saveMapStyle,
+  type MapStyleId,
+} from "./mapStyles";
 import { UserLocationLayer } from "./UserLocationLayer";
 import { LocationStatusChip } from "./LocationStatusChip";
 
@@ -85,12 +92,19 @@ export function ExploreMap({
   /** fitBounds padding so overlays (side panel, bottom sheet) don't cover the fitted area. */
   boundsOptions?: L.FitBoundsOptions;
 }) {
-  const [layers, setLayers] = useState<MapLayers>({ barangays: true });
+  const [layers, setLayers] = useState<MapLayers>(() => ({
+    barangays: loadBarangaysVisible(),
+  }));
   const [mapStyle, setMapStyle] = useState<MapStyleId>(loadMapStyle);
 
   const handleStyleChange = (style: MapStyleId) => {
     setMapStyle(style);
     saveMapStyle(style);
+  };
+
+  const handleLayersChange = (next: MapLayers) => {
+    setLayers(next);
+    saveBarangaysVisible(next.barangays);
   };
 
   // Viewport from real data: fit the municipality on load, never pan beyond
@@ -146,7 +160,7 @@ export function ExploreMap({
       <LocationStatusChip className="absolute left-1/2 top-16 z-[1000] -translate-x-1/2 md:top-3" />
       <MapLayerControls
         layers={layers}
-        onChange={setLayers}
+        onChange={handleLayersChange}
         mapStyle={mapStyle}
         onStyleChange={handleStyleChange}
         className="absolute right-3 top-16 z-[1000] md:top-3"

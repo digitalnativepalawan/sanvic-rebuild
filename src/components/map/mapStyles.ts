@@ -38,11 +38,12 @@ export const MAP_STYLES: Record<MapStyleId, MapStyleConfig> = {
   },
 };
 
-const STORAGE_KEY = "sanvic.mapStyle";
+const STYLE_STORAGE_KEY = "sanvic.mapStyle";
+const BARANGAYS_STORAGE_KEY = "sanvic.mapLayers.barangays";
 
 export function loadMapStyle(): MapStyleId {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STYLE_STORAGE_KEY);
     if (stored === "navy" || stored === "street" || stored === "satellite") return stored;
   } catch {
     // storage unavailable — fall through to default
@@ -52,7 +53,24 @@ export function loadMapStyle(): MapStyleId {
 
 export function saveMapStyle(style: MapStyleId): void {
   try {
-    localStorage.setItem(STORAGE_KEY, style);
+    localStorage.setItem(STYLE_STORAGE_KEY, style);
+  } catch {
+    // best-effort persistence only
+  }
+}
+
+/** Barangay Lines overlay visibility — defaults to on. */
+export function loadBarangaysVisible(): boolean {
+  try {
+    return localStorage.getItem(BARANGAYS_STORAGE_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+export function saveBarangaysVisible(visible: boolean): void {
+  try {
+    localStorage.setItem(BARANGAYS_STORAGE_KEY, visible ? "on" : "off");
   } catch {
     // best-effort persistence only
   }

@@ -81,7 +81,7 @@ export function MapLayerControls({
             )}
           >
             <Hexagon size={14} />
-            Barangays
+            Barangay Lines
             {layers.barangays && <Check size={13} className="ml-auto" />}
           </button>
         </div>

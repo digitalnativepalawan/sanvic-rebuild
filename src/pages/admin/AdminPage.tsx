@@ -18,16 +18,14 @@ import { BarangaysAdmin } from "./BarangaysAdmin";
 
 const UNLOCK_KEY = "sanvic.admin_unlocked";
 
-function expectedPasskey(): string | undefined {
-  const configured = import.meta.env.VITE_ADMIN_PASSKEY;
-  if (configured) return configured;
-  return import.meta.env.DEV ? "5309" : undefined;
-}
+const isDev = import.meta.env.DEV;
+const configuredPasskey = import.meta.env.VITE_ADMIN_PASSKEY;
+const effectiveAdminPasskey = configuredPasskey || (isDev ? "5309" : "");
 
 function PasskeyGate({ onUnlock }: { onUnlock: () => void }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState(false);
-  const expected = expectedPasskey();
+  const expected = effectiveAdminPasskey;
 
   if (!expected) {
     return (
@@ -35,8 +33,11 @@ function PasskeyGate({ onUnlock }: { onUnlock: () => void }) {
         <ShieldAlert size={28} className="mx-auto text-sand-300" />
         <h1 className="font-display text-xl font-semibold text-mist-100">Admin is locked</h1>
         <p className="text-sm text-mist-400">
-          No <code className="text-mist-200">VITE_ADMIN_PASSKEY</code> is configured for this
-          build. Set it in your environment to enable the admin area.
+          This is a production build and no <code className="text-mist-200">VITE_ADMIN_PASSKEY</code>{" "}
+          is configured. Add that environment variable where this app is deployed (e.g. Vercel →
+          Project → Settings → Environment Variables) and redeploy to enable admin. Local dev
+          (<code className="text-mist-200">npm run dev</code>) falls back to passkey{" "}
+          <code className="text-mist-200">5309</code>.
         </p>
       </div>
     );
