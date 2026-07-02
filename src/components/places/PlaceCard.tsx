@@ -13,12 +13,15 @@ export function PlaceCard({
   place,
   headline,
   reason,
+  onViewMap,
 }: {
   place: Place;
   /** Optional recommendation title, e.g. "Best sunset spot tonight". */
   headline?: string;
   /** Overrides the place's default shortReason (recommendation copy). */
   reason?: string;
+  /** Focus this place on an on-screen map instead of navigating to /explore. */
+  onViewMap?: (place: Place) => void;
 }) {
   const meta = categoryMeta(place.category);
   const navigate = useNavigate();
@@ -70,7 +73,9 @@ export function PlaceCard({
       <div className="flex items-center gap-2 border-t border-white/[0.06] px-3.5 py-2">
         <SaveButton placeId={place.id} withLabel />
         <button
-          onClick={() => navigate(`/explore?focus=${place.slug}`)}
+          onClick={() =>
+            onViewMap ? onViewMap(place) : navigate(`/explore?focus=${place.slug}`)
+          }
           className="chip border border-white/10 bg-white/5 text-mist-300 hover:bg-white/10 hover:text-mist-100"
         >
           <MapPin size={14} />

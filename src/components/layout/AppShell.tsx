@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { useRef, type MouseEvent, type ReactNode } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Sun, Map, Route as RouteIcon, RadioTower, Sparkles, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTala } from "@/components/tala/TalaContext";
@@ -12,13 +12,37 @@ const NAV = [
   { to: "/pulse", label: "Pulse", icon: RadioTower },
 ];
 
+// Hidden admin access: triple-click/tap the logo within 3 seconds. The first
+// two clicks behave like normal home navigation; the third goes to /admin
+// (which is still passkey-gated). Direct /admin remains available.
+const TRIPLE_TAP_WINDOW_MS = 3000;
+
 function BrandMark() {
+  const navigate = useNavigate();
+  const taps = useRef<number[]>([]);
+
+  const handleClick = (e: MouseEvent) => {
+    const now = Date.now();
+    taps.current = [...taps.current.filter((t) => now - t < TRIPLE_TAP_WINDOW_MS), now];
+    if (taps.current.length >= 3) {
+      taps.current = [];
+      e.preventDefault();
+      navigate("/admin");
+    }
+  };
+
   return (
-    <NavLink to="/" aria-label="SANVIC.PH — home" className="flex shrink-0 items-center">
+    <NavLink
+      to="/"
+      aria-label="SANVIC.PH — home"
+      onClick={handleClick}
+      className="flex shrink-0 items-center"
+    >
       <img
         src="/images/sanvic-wordmark.png"
         alt="SANVIC.PH"
         className="h-9 w-auto md:h-10"
+        draggable={false}
       />
     </NavLink>
   );
@@ -28,6 +52,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { openTala } = useTala();
   const { pathname } = useLocation();
   const isExplore = pathname === "/explore";
+  // Map-first screens render the map full-bleed under the chrome.
+  const isMapFirst = pathname === "/" || isExplore;
 
   return (
     <div className="min-h-dvh">
@@ -98,7 +124,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
       )}
 
-      <main className={cn(!isExplore && "mx-auto max-w-6xl px-4 pb-24 pt-4 md:px-6 md:pb-12 md:pt-8")}>
+      <main className={cn(!isMapFirst && "mx-auto max-w-6xl px-4 pb-24 pt-4 md:px-6 md:pb-12 md:pt-8")}>
         {children}
       </main>
 

@@ -5,32 +5,36 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { Place } from "@/types";
 import { categoryMeta } from "@/data/categories";
 import { POBLACION } from "@/data/places";
+import { getSanVicenteBounds, getPalawanMaxBounds } from "@/lib/mapBounds";
 import { BarangayBoundaryLayer } from "./BarangayBoundaryLayer";
 import { MapLayerControls, type MapLayers } from "./MapLayerControls";
+import { MAP_STYLES, loadMapStyle, saveMapStyle, type MapStyleId } from "./mapStyles";
 
 // The SANVIC map: category-coded place pins over the barangay boundary
 // layer, with Poblacion as the fixed reference point every travel time is
-// measured from. Pins are colored teardrops with the category icon inside,
-// matching the legend chips — pins mean something.
-
-const SAN_VICENTE_CENTER: [number, number] = [10.48, 119.2];
+// measured from. The viewport is driven by real data: first load fits the
+// barangay boundary GeoJSON (+ valid place coordinates), and panning is
+// hard-limited to the Palawan region.
 
 function pinIcon(place: Place, active: boolean): L.DivIcon {
   const meta = categoryMeta(place.category);
-  const iconSvg = renderToStaticMarkup(<meta.icon size={14} color="#fff" strokeWidth={2.5} />);
+  const iconSvg = renderToStaticMarkup(
+    <meta.icon size={active ? 15 : 11} color="#fff" strokeWidth={2.5} />,
+  );
+  const size = active ? 34 : 22;
   return L.divIcon({
     className: "",
     html: `<div class="sanvic-pin ${active ? "sanvic-pin--active" : ""}" style="background:${meta.color}">${iconSvg}</div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 28],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size - 2],
   });
 }
 
 const poblacionIcon = L.divIcon({
   className: "",
   html: `<div class="sanvic-reference-marker">✦</div>`,
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
 });
 
 function FlyTo({ place }: { place?: Place }) {
@@ -45,9 +49,9 @@ function FlyTo({ place }: { place?: Place }) {
       map.invalidateSize();
       const size = map.getSize();
       if (size.x === 0 || size.y === 0) {
-        map.setView(target, 13, { animate: false });
+        map.setView(target, 14, { animate: false });
       } else {
-        map.flyTo(target, 13, { duration: 0.8 });
+        map.flyTo(target, 14, { duration: 0.8 });
       }
     });
     return () => cancelAnimationFrame(frame);
@@ -55,16 +59,42 @@ function FlyTo({ place }: { place?: Place }) {
   return null;
 }
 
+// Keep the Leaflet viewport in sync when the container resizes (bottom sheet
+// opening, panel collapse, orientation change).
+function InvalidateOnResize() {
+  const map = useMap();
+  useEffect(() => {
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 export function ExploreMap({
   places,
   selected,
   onSelect,
+  boundsOptions,
 }: {
   places: Place[];
   selected?: Place;
   onSelect: (place: Place) => void;
+  /** fitBounds padding so overlays (side panel, bottom sheet) don't cover the fitted area. */
+  boundsOptions?: L.FitBoundsOptions;
 }) {
   const [layers, setLayers] = useState<MapLayers>({ barangays: true });
+  const [mapStyle, setMapStyle] = useState<MapStyleId>(loadMapStyle);
+
+  const handleStyleChange = (style: MapStyleId) => {
+    setMapStyle(style);
+    saveMapStyle(style);
+  };
+
+  // Viewport from real data: fit the municipality on load, never pan beyond
+  // the Palawan region. Computed once — geometry is static per session.
+  const initialBounds = useMemo(() => getSanVicenteBounds(places), [places]);
+  const maxBounds = useMemo(() => getPalawanMaxBounds(), []);
 
   const markers = useMemo(
     () =>
@@ -79,22 +109,23 @@ export function ExploreMap({
     [places, selected, onSelect],
   );
 
+  const tile = MAP_STYLES[mapStyle];
+
   return (
-    <div className="relative h-full w-full">
+    <div className={`relative h-full w-full map-style-${mapStyle}`}>
       <MapContainer
-        center={SAN_VICENTE_CENTER}
-        zoom={11}
+        bounds={initialBounds}
+        boundsOptions={boundsOptions}
+        maxBounds={maxBounds}
+        maxBoundsViscosity={0.9}
         minZoom={9}
         maxZoom={17}
         zoomControl={false}
         className="h-full w-full"
         attributionControl={true}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {layers.barangays && <BarangayBoundaryLayer />}
+        <TileLayer key={tile.id} attribution={tile.attribution} url={tile.url} maxZoom={tile.maxZoom} />
+        {layers.barangays && <BarangayBoundaryLayer mapStyle={mapStyle} />}
         {/* Poblacion reference point — every travel time is measured from here */}
         <Marker
           position={[POBLACION.latitude, POBLACION.longitude]}
@@ -107,10 +138,13 @@ export function ExploreMap({
         </Marker>
         {markers}
         <FlyTo place={selected} />
+        <InvalidateOnResize />
       </MapContainer>
       <MapLayerControls
         layers={layers}
         onChange={setLayers}
+        mapStyle={mapStyle}
+        onStyleChange={handleStyleChange}
         className="absolute right-3 top-16 z-[1000] md:top-3"
       />
     </div>

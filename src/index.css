@@ -33,13 +33,17 @@
   }
 }
 
-/* Leaflet dark-theme adjustments */
+/* Leaflet adjustments, scoped per map mode. Only the navy brand mode tints
+   the tiles; street stays true-light and satellite stays true-color. */
 .leaflet-container {
   background: #0a1c33;
   font-family: inherit;
 }
-.leaflet-tile {
-  filter: brightness(0.72) saturate(0.85) contrast(1.05);
+.map-style-street .leaflet-container {
+  background: #dce6ee;
+}
+.map-style-navy .leaflet-tile {
+  filter: brightness(0.9) saturate(1.15) hue-rotate(-12deg);
 }
 .leaflet-control-zoom a {
   background: rgba(7, 22, 39, 0.9) !important;
@@ -60,23 +64,28 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Category map pins */
+/* Category map pins — small, precise teardrops. Base 22px, selected 34px. */
 .sanvic-pin {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50% 50% 50% 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50% 50% 50% 3px;
   transform: rotate(-45deg);
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 2px 10px rgba(2, 12, 27, 0.6);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 8px rgba(2, 12, 27, 0.55);
+  transition: width 0.15s ease, height 0.15s ease;
 }
 .sanvic-pin > svg {
   transform: rotate(45deg);
 }
 .sanvic-pin--active {
+  width: 34px;
+  height: 34px;
+  border-width: 2px;
   outline: 3px solid rgba(34, 211, 238, 0.55);
   outline-offset: 1px;
+  box-shadow: 0 3px 14px rgba(2, 12, 27, 0.7), 0 0 18px rgba(34, 211, 238, 0.35);
 }
 
 /* Barangay boundary labels: quiet uppercase tags on navy glass */
@@ -103,18 +112,19 @@
   }
 }
 
-/* Poblacion reference marker: fixed sand-colored anchor point */
+/* Poblacion reference marker: fixed sand-colored anchor point — important
+   but quiet, not cartoon-sized. */
 .sanvic-reference-marker {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 8px;
   color: #040d18;
   background: #eccf9e;
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 14px rgba(236, 207, 158, 0.5);
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 10px rgba(236, 207, 158, 0.45);
 }
 
 /* Thin scrollbars on panels */
