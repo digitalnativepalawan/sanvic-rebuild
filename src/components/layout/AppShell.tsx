@@ -14,20 +14,12 @@ const NAV = [
 
 function BrandMark() {
   return (
-    <NavLink
-      to="/"
-      aria-label="SANVIC.PH — home"
-      className="flex shrink-0 flex-col items-start justify-center gap-0.5 py-1"
-    >
-      <span className="font-display text-base font-light leading-none tracking-[0.32em] text-sand-200 sm:text-lg md:text-xl">
-        SANVIC
-      </span>
-      <span className="flex items-center gap-1 pl-px leading-none">
-        <span className="h-[3px] w-[3px] rounded-full bg-sand-300/80" />
-        <span className="text-[8px] font-medium uppercase leading-none tracking-[0.4em] text-sand-300/80 sm:text-[9px]">
-          PH
-        </span>
-      </span>
+    <NavLink to="/" aria-label="SANVIC.PH — home" className="flex shrink-0 items-center">
+      <img
+        src="/images/sanvic-wordmark.png"
+        alt="SANVIC.PH"
+        className="h-9 w-auto md:h-10"
+      />
     </NavLink>
   );
 }
