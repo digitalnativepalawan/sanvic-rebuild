@@ -5,7 +5,11 @@ import {
   ArrowUp,
   CalendarDays,
   Compass,
+  Heart,
+  LogOut,
+  Map as MapIcon,
   MapPin,
+  RadioTower,
   Route,
   Share2,
   Sparkles,
@@ -13,16 +17,21 @@ import {
 } from "lucide-react";
 import type { Place, TripDay, TripItem } from "@/types";
 import { useTripItems } from "@/hooks/useTrip";
+import { useAuth } from "@/hooks/useAuth";
 import { getPlaces } from "@/services/placesService";
 import { moveToDay, removePlace, reorder } from "@/services/tripService";
-import { distanceKm, formatTravelTime } from "@/lib/utils";
+import { signOut } from "@/services/authService";
+import { distanceKm, formatTravelTime, timeAgo } from "@/lib/utils";
 import { POBLACION } from "@/data/places";
 import { categoryMeta } from "@/data/categories";
 import { PlaceImage } from "@/components/places/PlaceImage";
 import { useTala } from "@/components/tala/TalaContext";
+import { LoginModal } from "@/components/auth/LoginModal";
+import { isAuthConfigured } from "@/services/authService";
 
-// Trip: saved places organized into Today / Tomorrow / Later, with a
-// suggested visiting order (nearest-neighbor from Poblacion) per day.
+// My Trip: your personal profile. Header identity (sign in for a synced
+// profile — browsing/saving works without it), quick actions, saved places
+// at a glance, the day-by-day plan (unchanged), and recent activity.
 
 const DAYS: { id: TripDay; label: string }[] = [
   { id: "today", label: "Today" },
@@ -31,8 +40,6 @@ const DAYS: { id: TripDay; label: string }[] = [
 ];
 
 function suggestOrder(items: { item: TripItem; place: Place }[]) {
-  // Greedy nearest-neighbor starting from Poblacion — a good-enough route
-  // hint at municipal scale, not a TSP solver.
   const remaining = [...items];
   const ordered: typeof items = [];
   let cursor = POBLACION;
@@ -43,6 +50,152 @@ function suggestOrder(items: { item: TripItem; place: Place }[]) {
     cursor = next.place;
   }
   return ordered;
+}
+
+function ProfileHeader() {
+  const { status, profile } = useAuth();
+  const [showLogin, setShowLogin] = useState(false);
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  if (status === "signedIn") {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-tide-500/15 text-lg font-semibold text-tide-300">
+          {profile?.avatarUrl ? (
+            <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            (profile?.displayName || "?")[0]?.toUpperCase()
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate font-display text-2xl font-semibold text-mist-100">
+            {greeting}, {profile?.displayName || "traveler"}!
+          </h1>
+          <p className="text-sm text-mist-400">Welcome back to San Vicente.</p>
+        </div>
+        <button
+          onClick={() => void signOut()}
+          aria-label="Sign out"
+          className="shrink-0 rounded-full p-2 text-mist-500 hover:bg-white/5 hover:text-mist-300"
+        >
+          <LogOut size={16} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="glass flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
+      <div>
+        <h1 className="font-display text-xl font-semibold text-mist-100">My Trip</h1>
+        <p className="mt-0.5 text-sm text-mist-400">
+          {isAuthConfigured
+            ? "Sign in for a synced profile — or keep browsing anonymously."
+            : "Your favorite spots and personal plan. Everything stays on this device."}
+        </p>
+      </div>
+      {isAuthConfigured && (
+        <button
+          onClick={() => setShowLogin(true)}
+          className="chip shrink-0 border border-tide-400/30 bg-tide-500/10 text-tide-300"
+        >
+          Sign in
+        </button>
+      )}
+      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+    </div>
+  );
+}
+
+function QuickActions() {
+  const { openTala } = useTala();
+  return (
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      <Link to="/explore" className="glass glass-hover flex flex-col items-center gap-1.5 rounded-2xl px-3 py-4 text-center">
+        <MapIcon size={20} className="text-tide-300" />
+        <span className="text-xs font-medium text-mist-200">Explore Map</span>
+      </Link>
+      <button
+        onClick={() => openTala()}
+        className="glass glass-hover flex flex-col items-center gap-1.5 rounded-2xl px-3 py-4 text-center"
+      >
+        <Sparkles size={20} className="text-tide-300" />
+        <span className="text-xs font-medium text-mist-200">Ask Tala</span>
+      </button>
+      <Link to="/pulse" className="glass glass-hover flex flex-col items-center gap-1.5 rounded-2xl px-3 py-4 text-center">
+        <RadioTower size={20} className="text-tide-300" />
+        <span className="text-xs font-medium text-mist-200">Open Pulse</span>
+      </Link>
+      <Link
+        to="/pulse?channel=events-tonight"
+        className="glass glass-hover flex flex-col items-center gap-1.5 rounded-2xl px-3 py-4 text-center"
+      >
+        <CalendarDays size={20} className="text-tide-300" />
+        <span className="text-xs font-medium text-mist-200">Find Events</span>
+      </Link>
+    </div>
+  );
+}
+
+function SavedPlacesStrip({ places }: { places: Place[] }) {
+  if (places.length === 0) return null;
+  return (
+    <section className="space-y-2.5">
+      <h2 className="font-display text-lg font-semibold text-mist-100">Saved Places</h2>
+      <div className="scroll-thin flex gap-3 overflow-x-auto pb-1">
+        {places.map((p) => (
+          <Link
+            key={p.id}
+            to={`/place/${p.slug}`}
+            className="glass glass-hover w-32 shrink-0 overflow-hidden rounded-2xl"
+          >
+            <PlaceImage place={p} className="h-24 w-full" />
+            <div className="p-2">
+              <p className="truncate text-xs font-medium text-mist-100">{p.name}</p>
+              <p className="truncate text-[11px] text-mist-500">{categoryMeta(p.category).label}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RecentActivity({ items, places }: { items: TripItem[]; places: Place[] }) {
+  const placeMap = useMemo(() => new Map(places.map((p) => [p.id, p])), [places]);
+  const recent = useMemo(
+    () =>
+      [...items]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 5)
+        .flatMap((item) => {
+          const place = placeMap.get(item.placeId);
+          return place ? [{ item, place }] : [];
+        }),
+    [items, placeMap],
+  );
+
+  if (recent.length === 0) return null;
+
+  return (
+    <section className="space-y-2.5">
+      <h2 className="font-display text-lg font-semibold text-mist-100">Recent Activity</h2>
+      <div className="space-y-2">
+        {recent.map(({ item, place }) => (
+          <div key={item.id} className="glass flex items-center gap-3 rounded-xl px-3.5 py-2.5">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-tide-500/15 text-tide-300">
+              <Heart size={14} />
+            </span>
+            <span className="min-w-0 flex-1 text-sm text-mist-300">
+              You saved <span className="text-mist-100">{place.name}</span>
+            </span>
+            <span className="shrink-0 text-xs text-mist-500">{timeAgo(item.createdAt)}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function TripRow({
@@ -127,8 +280,19 @@ export default function TripPage() {
     void getPlaces().then(setPlaces);
   }, []);
 
+  const placeMap = useMemo(() => new Map(places.map((p) => [p.id, p])), [places]);
+  const savedPlaces = useMemo(
+    () =>
+      [...items]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .flatMap((i) => {
+          const place = placeMap.get(i.placeId);
+          return place ? [place] : [];
+        }),
+    [items, placeMap],
+  );
+
   const byDay = useMemo(() => {
-    const placeMap = new Map(places.map((p) => [p.id, p]));
     const result = new Map<TripDay, { item: TripItem; place: Place }[]>();
     for (const { id } of DAYS) {
       const dayItems = items
@@ -141,19 +305,16 @@ export default function TripPage() {
       result.set(id, dayItems);
     }
     return result;
-  }, [items, places]);
+  }, [items, placeMap]);
 
   const isEmpty = items.length === 0;
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <header className="pt-2 md:pt-6">
-        <h1 className="font-display text-3xl font-semibold text-mist-100">My Trip</h1>
-        <p className="mt-1 text-sm text-mist-400">
-          Your favorite spots and personal plan, organized by day. Everything stays on this
-          device — no account needed.
-        </p>
-      </header>
+      <ProfileHeader />
+      <QuickActions />
+      <SavedPlacesStrip places={savedPlaces} />
+      <RecentActivity items={items} places={places} />
 
       {isEmpty ? (
         <div className="glass grid place-items-center gap-4 rounded-2xl px-6 py-14 text-center">

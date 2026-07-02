@@ -186,9 +186,65 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["tala_messages"]["Row"]>;
         Relationships: [];
       };
+      profiles: {
+        Row: {
+          id: string;
+          display_name: string | null;
+          avatar_url: string | null;
+          bio: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { id: string; display_name?: string | null; avatar_url?: string | null; bio?: string | null };
+        Update: Partial<Database["public"]["Tables"]["profiles"]["Row"]>;
+        Relationships: [];
+      };
+      user_roles: {
+        Row: { user_id: string; role: string; created_at: string };
+        Insert: { user_id: string; role: string };
+        Update: Partial<Database["public"]["Tables"]["user_roles"]["Row"]>;
+        Relationships: [];
+      };
+      pulse_posts: {
+        Row: {
+          id: string;
+          author_id: string;
+          channel: string;
+          body: string;
+          location: string | null;
+          media_urls: string[];
+          is_pinned: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["pulse_posts"]["Row"]> & {
+          author_id: string;
+          body: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["pulse_posts"]["Row"]>;
+        Relationships: [];
+      };
+      pulse_comments: {
+        Row: { id: string; post_id: string; author_id: string; body: string; created_at: string };
+        Insert: Partial<Database["public"]["Tables"]["pulse_comments"]["Row"]> & {
+          post_id: string;
+          author_id: string;
+          body: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["pulse_comments"]["Row"]>;
+        Relationships: [];
+      };
+      pulse_likes: {
+        Row: { post_id: string; user_id: string; created_at: string };
+        Insert: { post_id: string; user_id: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["pulse_likes"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      has_role: { Args: { uid: string; target_role: string }; Returns: boolean };
+    };
     Enums: Record<string, never>;
   };
 }

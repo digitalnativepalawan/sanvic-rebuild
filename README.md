@@ -17,8 +17,8 @@ Supabase-ready when you are, and importable into Lovable as-is.
 | --- | --- |
 | **Today** (`/`) | The launch screen is the living San Vicente map — barangay lines and destination pins visible immediately — with today's ranked recommendations (time-of-day and weather aware) as a map-connected overlay: floating side panel on desktop, peek-height bottom sheet on mobile. Greeting, weather + sunset, Ask Tala, and the top local signal live in the overlay; every card's "View on map" focuses its pin in place. |
 | **Explorer** (`/explore`) | Full-catalogue discovery on the same map. Desktop: place list + map side by side. Mobile: full-bleed map with floating category chips and a bottom sheet. Pins are category-coded (color + icon), matching the chips. |
-| **Pulse** (`/pulse`) | Local Updates, not a social feed: beach conditions, sunset window, boat status, road updates, food tips, events. Live weather becomes a first-class update when available. |
-| **My Trip** (`/trip`) | Your favorite spots and personal plan — saved places organized into Today / Tomorrow / Later, with a suggested visiting order from Poblacion. Local-first, anonymous session — no login. |
+| **Pulse** (`/pulse`) | Two tabs. **Live Feed**: the real community — signed-in users post text + photos/video to channels (Hidden Spots, Island Hopping, Food & Nightlife, Surf Report, Events Tonight), like and comment, in real time (Supabase Realtime). **Local Updates**: the original trustworthy admin-curated signal feed (conditions, boats, roads, events), unchanged. |
+| **My Trip** (`/trip`) | Your personal profile: identity header (sign in for a synced profile, or stay anonymous), quick actions, a saved-places strip, recent activity, and the day-by-day plan (Today / Tomorrow / Later) with a suggested visiting order from Poblacion. Saving places never requires login; the profile identity layer is optional on top. |
 | **Locate** (nav button) | Asks the browser for your position, jumps to the map, and shows a pulsing "you are here" dot with an accuracy circle — so you can orient yourself and get directions. Gracefully reports denied permission or an out-of-Palawan fix. |
 | **Place detail** (`/place/:slug`) | Full detail: photo (with designed fallback), rating, barangay, travel time from Poblacion, best time/season, tags, Directions / Save / Ask Tala / Book–Contact / View on map. |
 | **Admin** (`/admin`) | Passkey-gated content management: places, Today recommendations, Pulse updates, and barangays — fully editable without Supabase (local drafts) and write-through when Supabase is connected. |
@@ -45,6 +45,11 @@ floating Layers control on all devices and persisted to localStorage.
 **Hidden admin access:** triple-click/tap the SANVIC logo within 3 seconds to open `/admin`
 (still passkey-gated). The direct route and the desktop gear icon also work.
 
+**Login is optional and easy.** Supabase Auth email magic link — enter an email, click the
+link, done. No password, no custom backend. Signing in unlocks a synced profile (My Trip
+header, display name/avatar) and the ability to post/like/comment in Pulse's Live Feed;
+browsing, saving places, and planning a trip never require it.
+
 ## Running locally
 
 ```bash
@@ -54,7 +59,8 @@ npm run build      # type-check + production build
 npm run preview
 ```
 
-No environment variables required — the app runs on bundled seed data out of the box.
+No environment variables required for the core app — it runs on bundled seed data out of the
+box. Login and Pulse's Live Feed need Supabase (see below); everything else works without it.
 
 ## Architecture
 
@@ -64,7 +70,8 @@ src/
   data/            Seed content (places, recommendations, local updates,
                    categories, barangays, PSA boundary GeoJSON)
                    — shaped 1:1 to the Supabase tables
-  lib/             supabase client (optional), session id, shared utils
+  lib/             supabase client (optional), session id, shared utils,
+                   mapBounds (data-driven viewport + Palawan pan limit)
   services/        THE data access layer. UI never touches Supabase or seed
                    arrays directly:
     contentService       generic editable stores: seed → localStorage drafts
@@ -75,15 +82,28 @@ src/
     talaService          Tala provider interface + local rules provider
     tripService          local-first trip persistence (pub/sub + localStorage)
     weatherService       Open-Meteo live weather with seasonal fallback
-  hooks/           useWeather, useTrip, useMediaQuery
+    authService          Supabase Auth (magic link) + profile + role state
+    pulseFeedService     Pulse Live Feed: posts/comments/likes, media upload,
+                         Realtime subscription — requires Supabase
+    locationService      browser geolocation for the Locate button
+  hooks/           useWeather, useTrip, useMediaQuery, useAuth
   components/      layout (AppShell/nav), places (cards, image fallback, save),
-                   map (category pins, BarangayBoundaryLayer, MapLayerControls),
-                   tala (panel + context)
-  pages/           Today, Explore, Trip, Pulse, PlaceDetail, admin/ (editors)
+                   map (category pins, BarangayBoundaryLayer, MapLayerControls,
+                   UserLocationLayer), tala (panel + context),
+                   auth (LoginModal), pulse (composer, post card)
+  pages/           Today, Explore, Trip (profile), Pulse, PlaceDetail,
+                   admin/ (editors)
 supabase/
-  migrations/0001_initial_schema.sql   core schema + RLS
-  migrations/0002_barangays_and_admin.sql  barangays, boundaries, admin columns
-  seed.sql                             seed data generated from src/data
+  migrations/0001_initial_schema.sql        core schema + RLS
+  migrations/0002_barangays_and_admin.sql   barangays, boundaries, admin columns
+  migrations/0003_auth_profiles_and_pulse_chat.sql
+                                             profiles, user_roles + has_role(),
+                                             pulse_posts/comments/likes, RLS
+  migrations/0004_pulse_author_profile_fk.sql
+                                             re-points Pulse author FKs at
+                                             profiles so PostgREST can embed
+                                             author display_name/avatar_url
+  seed.sql                                  seed data generated from src/data
 ```
 
 Key decisions:
@@ -114,32 +134,66 @@ Open `/admin` (also the gear icon in the desktop header).
   surface as a warning in the admin UI.
 
 **Security status — read this before production.** The passkey ships in the client bundle;
-it is a demo gate, not authentication. Content tables are read-only by default under RLS, so
-admin write-through requires the clearly-marked DEMO policies in
-`supabase/migrations/0002_barangays_and_admin.sql` (commented out). Production admin must move
-to Supabase Auth + role-checked RLS policies (or an Edge Function) — the pattern is documented
-in that migration.
+it is a demo gate, not authentication. Content-table writes are protected by RLS with two
+policies per table (see `0003`, "Admin write access"): a real one scoped to authenticated
+users with the `admin` role (`has_role(auth.uid(), 'admin')`), and a DEMO anon-write policy
+that lets the passkey-only `/admin` screen function today. Both are active — either being
+satisfied grants access. Before real production: move `/admin` onto a Supabase Auth session
+(reusing the same login as the rest of the app) and drop the DEMO policies, leaving only the
+role-checked one.
 
-## Connecting Supabase later
+## Connecting Supabase
+
+Login, the My Trip profile identity, and Pulse's Live Feed all require a real Supabase
+project — this is genuinely multi-user content, unlike the rest of the app's local-first
+fallback. Places/Today/Local Updates/Barangays admin content still works fine without it
+(localStorage-only drafts).
 
 1. Create a Supabase project.
-2. Run `supabase/migrations/0001_initial_schema.sql`, then
-   `supabase/migrations/0002_barangays_and_admin.sql` (SQL editor or `supabase db push`).
+2. Run the migrations in order (SQL editor or `supabase db push`):
+   `0001_initial_schema.sql` → `0002_barangays_and_admin.sql` →
+   `0003_auth_profiles_and_pulse_chat.sql` → `0004_pulse_author_profile_fk.sql`.
 3. Run `supabase/seed.sql` to load the starter content.
-4. Copy `.env.example` to `.env` and fill in:
+4. Create a public Storage bucket named `pulse-media` (50 MB limit; image/* and video/mp4,
+   video/webm, video/quicktime) with these policies on `storage.objects`:
+   - public `select` where `bucket_id = 'pulse-media'`
+   - authenticated `insert`/`delete` where `bucket_id = 'pulse-media' and (storage.foldername(name))[1] = auth.uid()::text`
+5. Authentication → URL Configuration: add your dev URL (`http://localhost:8080`) and your
+   deployed URL(s) to **Redirect URLs**, and set **Site URL** to your primary deployed URL —
+   otherwise the magic-link email will redirect somewhere invalid.
+6. Copy `.env.example` to `.env` and fill in:
    ```
    VITE_SUPABASE_URL=https://<project>.supabase.co
    VITE_SUPABASE_ANON_KEY=<anon key>
    ```
-5. Restart the dev server. `placesService` and `getLocalUpdates` automatically prefer
-   Supabase and fall back to seed data if the fetch fails or tables are empty.
+7. Restart the dev server. Content services automatically prefer Supabase (with a 5s timeout
+   per request before falling back to seed/local data — see "Network resilience" below);
+   `authService` and `pulseFeedService` require it outright.
+8. **Grant yourself admin** (optional, only needed to move `/admin` off the passkey later):
+   sign in once via the app so a `profiles` row exists, then in the SQL editor:
+   ```sql
+   insert into public.user_roles (user_id, role)
+   select id, 'admin' from auth.users where email = 'you@example.com';
+   ```
 
-Only the anon key belongs in the frontend — never a service-role key. Content tables are
-public-read / admin-write (RLS); session tables are open for anonymous writes for now, with a
-documented recommendation to scope them to `auth.uid()` once real auth is introduced.
+On Vercel (or any host), add `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and
+`VITE_ADMIN_PASSKEY` as environment variables and redeploy — env var changes don't apply to
+already-built deployments.
+
+Only the anon key belongs in the frontend — never a service-role key. Session tables
+(saves/trips) are open for anonymous writes for now, with a documented recommendation to
+scope them to `auth.uid()` once trips move onto real auth too.
 
 To regenerate DB types after schema changes:
 `npx supabase gen types typescript --project-id <id> > src/types/database.ts`
+(the project currently hand-maintains `src/types/database.ts` in the same shape instead).
+
+### Network resilience
+
+Every Supabase call in `contentService` and `pulseFeedService` races against a timeout (5–6s)
+before falling back to seed/local/empty state — a slow or unreachable connection shows
+content promptly instead of hanging indefinitely. On a healthy connection this is invisible
+(real requests resolve in tens of milliseconds).
 
 ### Upgrading Tala to a real model
 
@@ -156,11 +210,20 @@ is hardcoded in components.
 
 ## Known TODOs / risks
 
-- **Admin security is prototype-grade** (client-side passkey + DEMO write policies if enabled).
-  Move to Supabase Auth + role-checked RLS or an Edge Function before real production. This is
-  the top production blocker.
-- **Trip → Supabase sync** is prepared (schema + session id) but not wired; trips are per-device.
+- **Admin security is prototype-grade** (client-side passkey + DEMO write policies active
+  alongside the real role-checked ones). Move `/admin` onto the same Supabase Auth session as
+  the rest of the app, grant your account the `admin` role (see above), and drop the DEMO
+  policies before real production. This is the top production blocker.
+- **Trip → Supabase sync** is prepared (schema + session id) but not wired; trips are per-device
+  even when signed in. The profile identity (My Trip header, Pulse authorship) is separate from
+  trip data today.
 - **Trip sharing** is a visible placeholder pending Supabase sync.
+- **Pulse Live Feed has no moderation queue** — admins can delete any post/comment inline
+  (the trash icon on a card, visible to the author or an `admin`-role user), but there's no
+  report/flag flow yet.
+- **"Nearby" and "Rooms"** from the Pulse reference design weren't built — Nearby needs
+  geolocation-based proximity ranking, Rooms needs private/group threads; both are larger
+  features than this pass. Only Live Feed and Local Updates ship as tabs.
 - **Boundary geometry ships in the frontend** (`src/data/barangayBoundaries.ts`); the
   `barangay_boundaries` table exists for when boundary editing moves server-side.
 - **Coordinates are approximate** for area-level entries (e.g. "Grill Row"); refine as real
