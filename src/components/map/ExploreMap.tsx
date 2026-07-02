@@ -157,9 +157,14 @@ export function ExploreMap({
 
   const markers = useMemo(
     () =>
-      places.map((p) => {
+      places.flatMap((p) => {
         const active = selected?.id === p.id;
-        return (
+        // At overview zoom the map shows barangay boundaries + labels only —
+        // destination pins stay hidden until you zoom in, so login/first
+        // load never looks cluttered. The selected pin is the one exception
+        // (so "View on map" always has something to point at).
+        if (tier === "far" && !active) return [];
+        return [
           <Marker
             key={p.id}
             position={[p.latitude, p.longitude]}
@@ -172,8 +177,8 @@ export function ExploreMap({
                 {p.name}
               </Tooltip>
             )}
-          </Marker>
-        );
+          </Marker>,
+        ];
       }),
     [places, selected, onSelect, tier],
   );
