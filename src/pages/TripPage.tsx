@@ -148,9 +148,10 @@ export default function TripPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <header className="pt-2 md:pt-6">
-        <h1 className="font-display text-3xl font-semibold text-mist-100">Your trip</h1>
+        <h1 className="font-display text-3xl font-semibold text-mist-100">My Trip</h1>
         <p className="mt-1 text-sm text-mist-400">
-          Saved places, organized by day. Everything stays on this device — no account needed.
+          Your favorite spots and personal plan, organized by day. Everything stays on this
+          device — no account needed.
         </p>
       </header>
 

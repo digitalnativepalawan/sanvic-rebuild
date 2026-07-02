@@ -3,18 +3,38 @@ import { GeoJSON, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import { getBarangaysSync, getBoundaryFeatures } from "@/services/barangayService";
 import { barangaysStore } from "@/services/barangayService";
+import type { MapStyleId } from "./mapStyles";
 
 // Barangay boundary lines + labels. The communities are a core layer of the
-// product, not decoration: thin dashed aqua lines on navy with quiet
-// uppercase labels, so the municipality reads as ten distinct places.
+// product, not decoration: thin dashed lines with quiet uppercase labels, so
+// the municipality reads as ten distinct places. Line treatment adapts per
+// map mode so boundaries stay readable over navy, street, and satellite.
 
-const BOUNDARY_STYLE: L.PathOptions = {
-  color: "#67e8f9",
-  weight: 1.1,
-  opacity: 0.45,
-  dashArray: "5 5",
-  fillColor: "#0e2440",
-  fillOpacity: 0.06,
+const BOUNDARY_STYLES: Record<MapStyleId, L.PathOptions> = {
+  navy: {
+    color: "#67e8f9",
+    weight: 1.1,
+    opacity: 0.5,
+    dashArray: "5 5",
+    fillColor: "#0e2440",
+    fillOpacity: 0.06,
+  },
+  street: {
+    color: "#0891b2",
+    weight: 1.4,
+    opacity: 0.65,
+    dashArray: "5 5",
+    fillColor: "#06b6d4",
+    fillOpacity: 0.04,
+  },
+  satellite: {
+    color: "#a5f3fc",
+    weight: 1.4,
+    opacity: 0.75,
+    dashArray: "5 5",
+    fillColor: "#0e2440",
+    fillOpacity: 0.05,
+  },
 };
 
 function labelIcon(name: string): L.DivIcon {
@@ -26,7 +46,13 @@ function labelIcon(name: string): L.DivIcon {
   });
 }
 
-export function BarangayBoundaryLayer({ showLabels = true }: { showLabels?: boolean }) {
+export function BarangayBoundaryLayer({
+  showLabels = true,
+  mapStyle = "navy",
+}: {
+  showLabels?: boolean;
+  mapStyle?: MapStyleId;
+}) {
   const map = useMap();
   const [zoom, setZoom] = useState(map.getZoom());
   const [, setVersion] = useState(0);
@@ -57,9 +83,9 @@ export function BarangayBoundaryLayer({ showLabels = true }: { showLabels?: bool
   return (
     <>
       <GeoJSON
-        key={geoKey}
+        key={`${geoKey}:${mapStyle}`}
         data={{ type: "FeatureCollection", features } as never}
-        style={BOUNDARY_STYLE}
+        style={BOUNDARY_STYLES[mapStyle]}
       />
       {labelsVisible &&
         barangays

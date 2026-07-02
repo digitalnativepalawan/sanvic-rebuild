@@ -15,10 +15,11 @@ Supabase-ready when you are, and importable into Lovable as-is.
 
 | Screen | Purpose |
 | --- | --- |
-| **Today** (`/`) | The primary decision screen: greeting, live weather + sunset pill, Ask Tala, top local signal, and 3–5 ranked recommendation cards for *right now* (time-of-day and weather aware). |
-| **Explore** (`/explore`) | Map-first discovery. Desktop: place list + map side by side. Mobile: full-bleed map with floating category chips and a bottom sheet. Pins are category-coded (color + icon), matching the chips. |
-| **Trip** (`/trip`) | Saved places organized into Today / Tomorrow / Later, with a suggested visiting order from Poblacion. Local-first, anonymous session — no login. |
+| **Today** (`/`) | The launch screen is the living San Vicente map — barangay lines and destination pins visible immediately — with today's ranked recommendations (time-of-day and weather aware) as a map-connected overlay: floating side panel on desktop, peek-height bottom sheet on mobile. Greeting, weather + sunset, Ask Tala, and the top local signal live in the overlay; every card's "View on map" focuses its pin in place. |
+| **Explorer** (`/explore`) | Full-catalogue discovery on the same map. Desktop: place list + map side by side. Mobile: full-bleed map with floating category chips and a bottom sheet. Pins are category-coded (color + icon), matching the chips. |
 | **Pulse** (`/pulse`) | Local Updates, not a social feed: beach conditions, sunset window, boat status, road updates, food tips, events. Live weather becomes a first-class update when available. |
+| **My Trip** (`/trip`) | Your favorite spots and personal plan — saved places organized into Today / Tomorrow / Later, with a suggested visiting order from Poblacion. Local-first, anonymous session — no login. |
+| **Locate** (nav button) | Asks the browser for your position, jumps to the map, and shows a pulsing "you are here" dot with an accuracy circle — so you can orient yourself and get directions. Gracefully reports denied permission or an out-of-Palawan fix. |
 | **Place detail** (`/place/:slug`) | Full detail: photo (with designed fallback), rating, barangay, travel time from Poblacion, best time/season, tags, Directions / Save / Ask Tala / Book–Contact / View on map. |
 | **Admin** (`/admin`) | Passkey-gated content management: places, Today recommendations, Pulse updates, and barangays — fully editable without Supabase (local drafts) and write-through when Supabase is connected. |
 
@@ -26,11 +27,23 @@ Supabase-ready when you are, and importable into Lovable as-is.
 It answers with structured results — message + place cards + map focus + follow-up suggestions —
 driven by a data-aware rules engine over the catalogue and recommendation engine.
 
-**Barangay boundaries** are a core map layer, not decoration. Explore renders the ten
+**Barangay boundaries** are a core map layer, not decoration. The map renders the ten
 communities (Poblacion, New Agutaya, San Isidro, Alimanguan, Santo Niño, New Canipo, Binga,
-Kemdeng, Port Barton, Caruray) as dashed aqua boundary lines with quiet uppercase labels,
+Kemdeng, Port Barton, Caruray) as dashed boundary lines with quiet uppercase labels,
 a Barangays layer toggle, and a fixed sand-colored Poblacion reference marker. Geometry is
 real PSA PSGC data (via [philippines-json-maps](https://github.com/faeldon/philippines-json-maps), MIT).
+
+**The map is data-driven and constrained.** `src/lib/mapBounds.ts` computes the initial
+viewport by fitting the barangay boundary GeoJSON plus all valid place coordinates (anything
+outside a Palawan sanity window is excluded, so one bad marker can never zoom the map out to
+the whole Philippines), and derives a hard `maxBounds` pan limit (~100 km around the
+municipality) from the same geometry — you can explore around Palawan but not drag off to
+Manila or open ocean. Three map modes ship via keyless public tile services — **Navy**
+(Carto dark), **Street** (OSM), **Satellite** (Esri World Imagery) — switchable from the
+floating Layers control on all devices and persisted to localStorage.
+
+**Hidden admin access:** triple-click/tap the SANVIC logo within 3 seconds to open `/admin`
+(still passkey-gated). The direct route and the desktop gear icon also work.
 
 ## Running locally
 

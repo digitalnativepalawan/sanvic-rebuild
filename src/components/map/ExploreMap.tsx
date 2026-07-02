@@ -5,32 +5,88 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { Place } from "@/types";
 import { categoryMeta } from "@/data/categories";
 import { POBLACION } from "@/data/places";
+import { getSanVicenteBounds, getPalawanMaxBounds } from "@/lib/mapBounds";
 import { BarangayBoundaryLayer } from "./BarangayBoundaryLayer";
 import { MapLayerControls, type MapLayers } from "./MapLayerControls";
+import {
+  MAP_STYLES,
+  loadBarangaysVisible,
+  loadMapStyle,
+  saveBarangaysVisible,
+  saveMapStyle,
+  type MapStyleId,
+} from "./mapStyles";
+import { UserLocationLayer } from "./UserLocationLayer";
+import { LocationStatusChip } from "./LocationStatusChip";
 
 // The SANVIC map: category-coded place pins over the barangay boundary
 // layer, with Poblacion as the fixed reference point every travel time is
-// measured from. Pins are colored teardrops with the category icon inside,
-// matching the legend chips — pins mean something.
+// measured from. The viewport is driven by real data: first load fits the
+// barangay boundary GeoJSON (+ valid place coordinates), and panning is
+// hard-limited to the Palawan region.
+//
+// Progressive disclosure keeps the overview beautiful instead of clustered:
+// at municipality zoom the destinations render as a quiet constellation of
+// small glowing category-colored dots; zooming in graduates featured places
+// and then everything to full pins. The selected place is always a full pin.
 
-const SAN_VICENTE_CENTER: [number, number] = [10.48, 119.2];
+type MarkerTier = "far" | "mid" | "near";
 
-function pinIcon(place: Place, active: boolean): L.DivIcon {
+function tierForZoom(zoom: number): MarkerTier {
+  if (zoom >= 13) return "near";
+  if (zoom >= 11) return "mid";
+  return "far";
+}
+
+function dotIcon(place: Place, size: number): L.DivIcon {
   const meta = categoryMeta(place.category);
-  const iconSvg = renderToStaticMarkup(<meta.icon size={14} color="#fff" strokeWidth={2.5} />);
+  return L.divIcon({
+    className: "",
+    html: `<div class="sanvic-dot" style="width:${size}px;height:${size}px;background:${meta.color};box-shadow:0 0 ${size}px ${meta.color}99"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+function teardropIcon(place: Place, size: number, active: boolean): L.DivIcon {
+  const meta = categoryMeta(place.category);
+  const iconSvg = renderToStaticMarkup(
+    <meta.icon size={active ? 15 : 11} color="#fff" strokeWidth={2.5} />,
+  );
   return L.divIcon({
     className: "",
     html: `<div class="sanvic-pin ${active ? "sanvic-pin--active" : ""}" style="background:${meta.color}">${iconSvg}</div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 28],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size - 2],
   });
+}
+
+function placeIcon(place: Place, active: boolean, tier: MarkerTier): L.DivIcon {
+  if (active) return teardropIcon(place, 34, true);
+  if (tier === "near") return teardropIcon(place, 22, false);
+  if (tier === "mid") return place.isFeatured ? teardropIcon(place, 20, false) : dotIcon(place, 9);
+  return dotIcon(place, place.isFeatured ? 10 : 8);
+}
+
+// Publishes the current zoom so markers can re-tier on zoomend.
+function ZoomTracker({ onZoom }: { onZoom: (zoom: number) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    const handler = () => onZoom(map.getZoom());
+    handler();
+    map.on("zoomend", handler);
+    return () => {
+      map.off("zoomend", handler);
+    };
+  }, [map, onZoom]);
+  return null;
 }
 
 const poblacionIcon = L.divIcon({
   className: "",
   html: `<div class="sanvic-reference-marker">✦</div>`,
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
 });
 
 function FlyTo({ place }: { place?: Place }) {
@@ -45,9 +101,9 @@ function FlyTo({ place }: { place?: Place }) {
       map.invalidateSize();
       const size = map.getSize();
       if (size.x === 0 || size.y === 0) {
-        map.setView(target, 13, { animate: false });
+        map.setView(target, 14, { animate: false });
       } else {
-        map.flyTo(target, 13, { duration: 0.8 });
+        map.flyTo(target, 14, { duration: 0.8 });
       }
     });
     return () => cancelAnimationFrame(frame);
@@ -55,46 +111,93 @@ function FlyTo({ place }: { place?: Place }) {
   return null;
 }
 
+// Keep the Leaflet viewport in sync when the container resizes (bottom sheet
+// opening, panel collapse, orientation change).
+function InvalidateOnResize() {
+  const map = useMap();
+  useEffect(() => {
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 export function ExploreMap({
   places,
   selected,
   onSelect,
+  boundsOptions,
 }: {
   places: Place[];
   selected?: Place;
   onSelect: (place: Place) => void;
+  /** fitBounds padding so overlays (side panel, bottom sheet) don't cover the fitted area. */
+  boundsOptions?: L.FitBoundsOptions;
 }) {
-  const [layers, setLayers] = useState<MapLayers>({ barangays: true });
+  const [layers, setLayers] = useState<MapLayers>(() => ({
+    barangays: loadBarangaysVisible(),
+  }));
+  const [mapStyle, setMapStyle] = useState<MapStyleId>(loadMapStyle);
+
+  const handleStyleChange = (style: MapStyleId) => {
+    setMapStyle(style);
+    saveMapStyle(style);
+  };
+
+  const handleLayersChange = (next: MapLayers) => {
+    setLayers(next);
+    saveBarangaysVisible(next.barangays);
+  };
+
+  // Viewport from real data: fit the municipality on load, never pan beyond
+  // the Palawan region. Computed once — geometry is static per session.
+  const initialBounds = useMemo(() => getSanVicenteBounds(places), [places]);
+  const maxBounds = useMemo(() => getPalawanMaxBounds(), []);
+
+  const [zoom, setZoom] = useState(10);
+  const tier = tierForZoom(zoom);
 
   const markers = useMemo(
     () =>
-      places.map((p) => (
-        <Marker
-          key={p.id}
-          position={[p.latitude, p.longitude]}
-          icon={pinIcon(p, selected?.id === p.id)}
-          eventHandlers={{ click: () => onSelect(p) }}
-        />
-      )),
-    [places, selected, onSelect],
+      places.map((p) => {
+        const active = selected?.id === p.id;
+        return (
+          <Marker
+            key={p.id}
+            position={[p.latitude, p.longitude]}
+            icon={placeIcon(p, active, tier)}
+            zIndexOffset={active ? 300 : p.isFeatured ? 100 : 0}
+            eventHandlers={{ click: () => onSelect(p) }}
+          >
+            {!active && (
+              <Tooltip direction="top" offset={[0, tier === "near" ? -20 : -8]} opacity={0.95}>
+                {p.name}
+              </Tooltip>
+            )}
+          </Marker>
+        );
+      }),
+    [places, selected, onSelect, tier],
   );
 
+  const tile = MAP_STYLES[mapStyle];
+
   return (
-    <div className="relative h-full w-full">
+    <div className={`relative h-full w-full map-style-${mapStyle}`}>
       <MapContainer
-        center={SAN_VICENTE_CENTER}
-        zoom={11}
+        bounds={initialBounds}
+        boundsOptions={boundsOptions}
+        maxBounds={maxBounds}
+        maxBoundsViscosity={0.9}
         minZoom={9}
         maxZoom={17}
         zoomControl={false}
         className="h-full w-full"
         attributionControl={true}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {layers.barangays && <BarangayBoundaryLayer />}
+        <TileLayer key={tile.id} attribution={tile.attribution} url={tile.url} maxZoom={tile.maxZoom} />
+        {layers.barangays && <BarangayBoundaryLayer mapStyle={mapStyle} />}
         {/* Poblacion reference point — every travel time is measured from here */}
         <Marker
           position={[POBLACION.latitude, POBLACION.longitude]}
@@ -106,11 +209,17 @@ export function ExploreMap({
           </Tooltip>
         </Marker>
         {markers}
+        <UserLocationLayer />
+        <ZoomTracker onZoom={setZoom} />
         <FlyTo place={selected} />
+        <InvalidateOnResize />
       </MapContainer>
+      <LocationStatusChip className="absolute left-1/2 top-16 z-[1000] -translate-x-1/2 md:top-3" />
       <MapLayerControls
         layers={layers}
-        onChange={setLayers}
+        onChange={handleLayersChange}
+        mapStyle={mapStyle}
+        onStyleChange={handleStyleChange}
         className="absolute right-3 top-16 z-[1000] md:top-3"
       />
     </div>
