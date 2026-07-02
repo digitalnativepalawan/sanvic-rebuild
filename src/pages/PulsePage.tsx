@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Umbrella,
   Sunset,
@@ -9,15 +9,32 @@ import {
   CloudSun,
   Lightbulb,
   MapPin,
+  RadioTower,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import type { LocalUpdate, UpdateCategory } from "@/types";
 import { getLocalUpdates } from "@/services/placesService";
 import { useWeather } from "@/hooks/useWeather";
+import { useAuth } from "@/hooks/useAuth";
 import { cn, timeAgo } from "@/lib/utils";
+import {
+  fetchPosts,
+  isFeedAvailable,
+  subscribeToNewPosts,
+  PULSE_CHANNELS,
+  type PulseChannel,
+  type PulsePost,
+} from "@/services/pulseFeedService";
+import { PulseComposer } from "@/components/pulse/PulseComposer";
+import { PulsePostCard } from "@/components/pulse/PulsePostCard";
+import { LoginModal } from "@/components/auth/LoginModal";
 
-// Pulse: local updates — trustworthy signals about conditions, food, roads,
-// boats, and events. Not a social feed.
+// Pulse: two things live under one roof.
+// - Live Feed: the community — real posts from real people, channels,
+//   photos/video, likes and comments (requires Supabase).
+// - Local Updates: trustworthy admin-curated signals (conditions, boats,
+//   roads, events) — unchanged from before.
 
 const CATEGORY_META: Record<UpdateCategory, { label: string; icon: LucideIcon; color: string }> = {
   beach: { label: "Beach", icon: Umbrella, color: "#38bdf8" },
@@ -76,7 +93,78 @@ function UpdateCard({ update }: { update: LocalUpdate }) {
   );
 }
 
-export default function PulsePage() {
+function LiveFeedTab() {
+  const { isAdmin } = useAuth();
+  const [channel, setChannel] = useState<PulseChannel>("all");
+  const [posts, setPosts] = useState<PulsePost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
+
+  const reload = useCallback(() => {
+    setLoading(true);
+    void fetchPosts(channel)
+      .then(setPosts)
+      .catch(() => setPosts([]))
+      .finally(() => setLoading(false));
+  }, [channel]);
+
+  useEffect(() => reload(), [reload]);
+  useEffect(() => subscribeToNewPosts(reload), [reload]);
+
+  if (!isFeedAvailable) {
+    return (
+      <div className="glass grid place-items-center gap-2 rounded-2xl px-6 py-14 text-center">
+        <Users size={30} className="text-mist-500" />
+        <p className="font-display text-lg font-medium text-mist-100">Live Feed isn't connected</p>
+        <p className="mx-auto max-w-sm text-sm text-mist-400">
+          This build isn't wired to Supabase yet, so community posts aren't available. Local
+          Updates still works.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="scroll-thin flex gap-2 overflow-x-auto pb-1">
+        {PULSE_CHANNELS.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => setChannel(c.id)}
+            className={cn(
+              "chip shrink-0 border",
+              channel === c.id
+                ? "border-tide-400/40 bg-tide-500/15 text-tide-300"
+                : "border-white/10 bg-white/5 text-mist-300",
+            )}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      <PulseComposer channel={channel} onPosted={reload} onRequireLogin={() => setShowLogin(true)} />
+
+      {loading ? (
+        <p className="py-8 text-center text-sm text-mist-500">Loading…</p>
+      ) : posts.length === 0 ? (
+        <p className="glass rounded-2xl px-6 py-10 text-center text-sm text-mist-400">
+          Nothing here yet — be the first to post in this channel.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {posts.map((p) => (
+            <PulsePostCard key={p.id} post={p} onChanged={reload} canModerate={!!isAdmin} />
+          ))}
+        </div>
+      )}
+
+      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+    </div>
+  );
+}
+
+function LocalUpdatesTab() {
   const [updates, setUpdates] = useState<LocalUpdate[]>([]);
   const [filter, setFilter] = useState<UpdateCategory | "all">("all");
   const weather = useWeather();
@@ -85,7 +173,6 @@ export default function PulsePage() {
     void getLocalUpdates().then(setUpdates);
   }, []);
 
-  // Live weather becomes a first-class update at the top of the feed.
   const weatherUpdate: LocalUpdate | null = useMemo(() => {
     if (!weather?.isLive) return null;
     return {
@@ -112,14 +199,7 @@ export default function PulsePage() {
   const activeCategories = [...new Set(all.map((u) => u.category))];
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <header className="pt-2 md:pt-6">
-        <h1 className="font-display text-3xl font-semibold text-mist-100">Pulse</h1>
-        <p className="mt-1 text-sm text-mist-400">
-          What's actually happening in San Vicente — conditions, boats, roads, food, and events.
-        </p>
-      </header>
-
+    <div className="space-y-4">
       <div className="scroll-thin flex gap-2 overflow-x-auto pb-1">
         <button
           onClick={() => setFilter("all")}
@@ -158,6 +238,46 @@ export default function PulsePage() {
           <UpdateCard key={u.id} update={u} />
         ))}
       </div>
+    </div>
+  );
+}
+
+export default function PulsePage() {
+  const [tab, setTab] = useState<"live" | "updates">("live");
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-5">
+      <header className="pt-2 md:pt-6">
+        <h1 className="font-display text-3xl font-semibold text-mist-100">Pulse</h1>
+        <p className="mt-1 text-sm text-mist-400">
+          The community, live — plus trustworthy signals about conditions, boats, roads, and events.
+        </p>
+      </header>
+
+      <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
+        <button
+          onClick={() => setTab("live")}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-sm font-medium transition-colors",
+            tab === "live" ? "bg-tide-500/15 text-tide-300" : "text-mist-400",
+          )}
+        >
+          <Users size={14} />
+          Live Feed
+        </button>
+        <button
+          onClick={() => setTab("updates")}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-sm font-medium transition-colors",
+            tab === "updates" ? "bg-tide-500/15 text-tide-300" : "text-mist-400",
+          )}
+        >
+          <RadioTower size={14} />
+          Local Updates
+        </button>
+      </div>
+
+      {tab === "live" ? <LiveFeedTab /> : <LocalUpdatesTab />}
     </div>
   );
 }

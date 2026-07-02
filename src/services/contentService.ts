@@ -90,16 +90,23 @@ export function createContentStore<T extends { id: string }>(options: {
     (supabase as unknown as { from(t: string): RemoteTable }).from(remote!.table);
 
   // Hydrate from Supabase when configured; seed/local data remains the
-  // fallback if the fetch fails or the table is empty.
+  // fallback if the fetch fails, times out, or the table is empty. The
+  // timeout matters as much as the try/catch: an unreachable or very slow
+  // connection would otherwise leave the UI waiting on `ready` indefinitely
+  // instead of showing content immediately.
+  const HYDRATE_TIMEOUT_MS = 5000;
   const ready: Promise<void> = (async () => {
     if (!remote || !supabase) return;
     try {
-      const { data, error } = await remoteTable().select("*");
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Supabase hydration timed out")), HYDRATE_TIMEOUT_MS),
+      );
+      const { data, error } = await Promise.race([remoteTable().select("*"), timeout]);
       if (!error && data && data.length > 0) {
         persist(data.map((row) => remote.fromRow(row as Record<string, unknown>)), false);
       }
     } catch {
-      // Offline / misconfigured — keep local content.
+      // Offline, misconfigured, or too slow — keep local content.
     }
   })();
 
