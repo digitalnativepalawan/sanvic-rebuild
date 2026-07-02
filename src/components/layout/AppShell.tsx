@@ -14,16 +14,20 @@ const NAV = [
 
 function BrandMark() {
   return (
-    <NavLink to="/" className="flex items-center gap-2.5">
-      <img src="/images/sanvic-logo.png" alt="" className="h-8 w-8 rounded-lg object-cover" />
-      <div className="leading-none">
-        <span className="font-display text-lg font-semibold tracking-wide text-mist-100">
-          SANVIC
+    <NavLink
+      to="/"
+      aria-label="SANVIC.PH — home"
+      className="flex shrink-0 flex-col items-start justify-center gap-0.5 py-1"
+    >
+      <span className="font-display text-base font-light leading-none tracking-[0.32em] text-sand-200 sm:text-lg md:text-xl">
+        SANVIC
+      </span>
+      <span className="flex items-center gap-1 pl-px leading-none">
+        <span className="h-[3px] w-[3px] rounded-full bg-sand-300/80" />
+        <span className="text-[8px] font-medium uppercase leading-none tracking-[0.4em] text-sand-300/80 sm:text-[9px]">
+          PH
         </span>
-        <span className="block text-[10px] uppercase tracking-[0.2em] text-mist-400">
-          San Vicente · Palawan
-        </span>
-      </div>
+      </span>
     </NavLink>
   );
 }
