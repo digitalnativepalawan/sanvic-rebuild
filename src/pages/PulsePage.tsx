@@ -99,6 +99,7 @@ export default function PulsePage() {
       location: "San Vicente",
       severity: weather.condition === "rain" ? "watch" : "good",
       source: "Open-Meteo live data",
+      isActive: true,
       createdAt: new Date().toISOString(),
     };
   }, [weather]);

@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
+  ExternalLink,
   MapPin,
   Navigation,
   Sparkles,
@@ -138,6 +139,17 @@ export default function PlaceDetailPage() {
               Directions
             </a>
             <SaveButton placeId={place.id} withLabel />
+            {place.bookingUrl && (
+              <a
+                href={place.bookingUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="chip border border-sand-300/30 bg-sand-300/10 text-sand-200 hover:bg-sand-300/20"
+              >
+                <ExternalLink size={14} />
+                Book / Contact
+              </a>
+            )}
             <button
               onClick={() => openTala(`Tell me about ${place.name} — when should I go and what should I know?`)}
               className="chip border border-white/10 bg-white/5 text-mist-300 hover:text-mist-100"

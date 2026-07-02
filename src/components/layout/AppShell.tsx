@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Sun, Map, Route as RouteIcon, RadioTower, Sparkles } from "lucide-react";
+import { Sun, Map, Route as RouteIcon, RadioTower, Sparkles, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTala } from "@/components/tala/TalaContext";
 import { TalaPanel } from "@/components/tala/TalaPanel";
@@ -58,13 +58,30 @@ export function AppShell({ children }: { children: ReactNode }) {
               </NavLink>
             ))}
           </nav>
-          <button
-            onClick={() => openTala()}
-            className="chip border border-tide-400/30 bg-tide-500/10 text-tide-300 hover:bg-tide-500/20"
-          >
-            <Sparkles size={14} />
-            Ask Tala
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => openTala()}
+              className="chip border border-tide-400/30 bg-tide-500/10 text-tide-300 hover:bg-tide-500/20"
+            >
+              <Sparkles size={14} />
+              Ask Tala
+            </button>
+            <NavLink
+              to="/admin"
+              aria-label="Admin"
+              title="Admin"
+              className={({ isActive }) =>
+                cn(
+                  "rounded-full p-2 transition-colors",
+                  isActive
+                    ? "bg-tide-500/15 text-tide-300"
+                    : "text-mist-500 hover:bg-white/5 hover:text-mist-200",
+                )
+              }
+            >
+              <Settings size={15} />
+            </NavLink>
+          </div>
         </div>
       </header>
 

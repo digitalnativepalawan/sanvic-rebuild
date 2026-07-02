@@ -27,6 +27,7 @@ export interface Database {
           best_season: string | null;
           travel_minutes_from_poblacion: number | null;
           travel_note: string | null;
+          booking_url: string | null;
           tags: string[];
           is_featured: boolean;
           is_active: boolean;
@@ -78,6 +79,7 @@ export interface Database {
           image_url: string | null;
           valid_from: string | null;
           valid_until: string | null;
+          is_active: boolean;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["local_updates"]["Row"]> & {
@@ -126,6 +128,45 @@ export interface Database {
           place_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["trip_items"]["Row"]>;
+        Relationships: [];
+      };
+      barangays: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          description: string | null;
+          latitude: number;
+          longitude: number;
+          label_visible: boolean;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["barangays"]["Row"]> & {
+          name: string;
+          slug: string;
+          latitude: number;
+          longitude: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["barangays"]["Row"]>;
+        Relationships: [];
+      };
+      barangay_boundaries: {
+        Row: {
+          id: string;
+          barangay_id: string;
+          geojson: Json;
+          source: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["barangay_boundaries"]["Row"]> & {
+          barangay_id: string;
+          geojson: Json;
+        };
+        Update: Partial<Database["public"]["Tables"]["barangay_boundaries"]["Row"]>;
         Relationships: [];
       };
       tala_messages: {

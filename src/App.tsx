@@ -6,6 +6,9 @@ import ExplorePage from "@/pages/ExplorePage";
 import TripPage from "@/pages/TripPage";
 import PulsePage from "@/pages/PulsePage";
 import PlaceDetailPage from "@/pages/PlaceDetailPage";
+import { lazy, Suspense } from "react";
+
+const AdminPage = lazy(() => import("@/pages/admin/AdminPage"));
 
 export default function App() {
   return (
@@ -18,6 +21,14 @@ export default function App() {
             <Route path="/trip" element={<TripPage />} />
             <Route path="/pulse" element={<PulsePage />} />
             <Route path="/place/:slug" element={<PlaceDetailPage />} />
+            <Route
+              path="/admin"
+              element={
+                <Suspense fallback={null}>
+                  <AdminPage />
+                </Suspense>
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppShell>

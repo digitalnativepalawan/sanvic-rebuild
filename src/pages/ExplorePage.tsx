@@ -6,6 +6,7 @@ import { getPlaces, filterByCategory } from "@/services/placesService";
 import { CATEGORIES } from "@/data/categories";
 import { cn, formatTravelTime, googleMapsDirectionsUrl } from "@/lib/utils";
 import { ExploreMap } from "@/components/map/ExploreMap";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { PlaceCard } from "@/components/places/PlaceCard";
 import { PlaceImage } from "@/components/places/PlaceImage";
 import { SaveButton } from "@/components/places/SaveButton";
@@ -118,6 +119,8 @@ export default function ExplorePage() {
   );
   const [selected, setSelected] = useState<Place>();
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Render exactly one layout (and one Leaflet instance) per breakpoint.
+  const isDesktop = useMediaQuery("(min-width: 768px)");
 
   useEffect(() => {
     void getPlaces().then(setPlaces);
@@ -149,7 +152,8 @@ export default function ExplorePage() {
   return (
     <div className="relative h-[calc(100dvh-4rem)]">
       {/* Desktop layout */}
-      <div className="hidden h-full md:flex">
+      {isDesktop ? (
+        <div className="flex h-full">
         <aside className="scroll-thin w-[400px] shrink-0 space-y-3 overflow-y-auto p-4">
           <CategoryChips active={category} onChange={setCategory} />
           {selected && <SelectedPreview place={selected} onClose={() => setSelected(undefined)} />}
@@ -164,9 +168,9 @@ export default function ExplorePage() {
           <ExploreMap places={visible} selected={selected} onSelect={handleSelect} />
         </div>
       </div>
-
-      {/* Mobile layout: full-bleed map + bottom sheet */}
-      <div className="h-full md:hidden">
+      ) : (
+      /* Mobile layout: full-bleed map + bottom sheet */
+      <div className="h-full">
         <ExploreMap places={visible} selected={selected} onSelect={handleSelect} />
 
         {/* Floating category chips over the map */}
@@ -205,6 +209,7 @@ export default function ExplorePage() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

@@ -1,12 +1,17 @@
-import { useEffect, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import { useEffect, useMemo, useState } from "react";
+import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Place } from "@/types";
 import { categoryMeta } from "@/data/categories";
+import { POBLACION } from "@/data/places";
+import { BarangayBoundaryLayer } from "./BarangayBoundaryLayer";
+import { MapLayerControls, type MapLayers } from "./MapLayerControls";
 
-// Category-coded pins: each marker is a colored teardrop with the category
-// icon inside, matching the legend chips — pins mean something.
+// The SANVIC map: category-coded place pins over the barangay boundary
+// layer, with Poblacion as the fixed reference point every travel time is
+// measured from. Pins are colored teardrops with the category icon inside,
+// matching the legend chips — pins mean something.
 
 const SAN_VICENTE_CENTER: [number, number] = [10.48, 119.2];
 
@@ -20,6 +25,13 @@ function pinIcon(place: Place, active: boolean): L.DivIcon {
     iconAnchor: [15, 28],
   });
 }
+
+const poblacionIcon = L.divIcon({
+  className: "",
+  html: `<div class="sanvic-reference-marker">✦</div>`,
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+});
 
 function FlyTo({ place }: { place?: Place }) {
   const map = useMap();
@@ -52,6 +64,8 @@ export function ExploreMap({
   selected?: Place;
   onSelect: (place: Place) => void;
 }) {
+  const [layers, setLayers] = useState<MapLayers>({ barangays: true });
+
   const markers = useMemo(
     () =>
       places.map((p) => (
@@ -66,21 +80,39 @@ export function ExploreMap({
   );
 
   return (
-    <MapContainer
-      center={SAN_VICENTE_CENTER}
-      zoom={11}
-      minZoom={9}
-      maxZoom={17}
-      zoomControl={false}
-      className="h-full w-full"
-      attributionControl={true}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    <div className="relative h-full w-full">
+      <MapContainer
+        center={SAN_VICENTE_CENTER}
+        zoom={11}
+        minZoom={9}
+        maxZoom={17}
+        zoomControl={false}
+        className="h-full w-full"
+        attributionControl={true}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {layers.barangays && <BarangayBoundaryLayer />}
+        {/* Poblacion reference point — every travel time is measured from here */}
+        <Marker
+          position={[POBLACION.latitude, POBLACION.longitude]}
+          icon={poblacionIcon}
+          zIndexOffset={-100}
+        >
+          <Tooltip direction="bottom" offset={[0, 8]} opacity={0.9}>
+            Poblacion — town center reference
+          </Tooltip>
+        </Marker>
+        {markers}
+        <FlyTo place={selected} />
+      </MapContainer>
+      <MapLayerControls
+        layers={layers}
+        onChange={setLayers}
+        className="absolute right-3 top-16 z-[1000] md:top-3"
       />
-      {markers}
-      <FlyTo place={selected} />
-    </MapContainer>
+    </div>
   );
 }

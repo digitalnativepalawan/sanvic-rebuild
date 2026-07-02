@@ -26,7 +26,7 @@ export const CATEGORIES: CategoryMeta[] = [
   { id: "stays", label: "Stays", color: "#f472b6", icon: BedDouble },
   { id: "nature", label: "Nature", color: "#4ade80", icon: TreePalm },
   { id: "culture", label: "Culture", color: "#facc15", icon: Landmark },
-  { id: "work", label: "Work spots", color: "#2dd4bf", icon: Laptop },
+  { id: "work", label: "Work spots", color: "#22d3ee", icon: Laptop },
   { id: "events", label: "Events", color: "#f87171", icon: CalendarDays },
 ];
 

@@ -14,12 +14,14 @@ export default {
           700: "#15325a",
           600: "#1e4478",
         },
-        // Aqua / teal accent — the SANVIC signature
+        // Aqua accent — the SANVIC signature. Deliberately cyan/aqua
+        // (ocean glow), never teal-green: the brand is navy sea at night,
+        // not a hiking app.
         tide: {
-          300: "#5eead4",
-          400: "#2dd4bf",
-          500: "#14b8a6",
-          600: "#0d9488",
+          300: "#67e8f9",
+          400: "#22d3ee",
+          500: "#06b6d4",
+          600: "#0891b2",
         },
         // Warm sand for secondary highlights
         sand: {
@@ -42,7 +44,7 @@ export default {
       },
       boxShadow: {
         glass: "0 8px 32px rgba(2, 12, 27, 0.45)",
-        glow: "0 0 24px rgba(45, 212, 191, 0.25)",
+        glow: "0 0 24px rgba(34, 211, 238, 0.25)",
       },
       backdropBlur: {
         xs: "2px",

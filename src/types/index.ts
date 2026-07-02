@@ -35,8 +35,23 @@ export interface Place {
   travelMinutesFromPoblacion?: number;
   /** How you get there when it isn't a simple road trip, e.g. "by boat from Port Barton" */
   travelNote?: string;
+  /** External booking / contact link for stays, tours, restaurants. */
+  bookingUrl?: string;
   tags: string[];
   isFeatured: boolean;
+  isActive: boolean;
+}
+
+export interface Barangay {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  /** Label anchor point on the map. */
+  latitude: number;
+  longitude: number;
+  labelVisible: boolean;
+  sortOrder: number;
   isActive: boolean;
 }
 
@@ -83,6 +98,7 @@ export interface LocalUpdate {
   source: string;
   validFrom?: string;
   validUntil?: string;
+  isActive: boolean;
   createdAt: string;
   imageUrl?: string;
 }

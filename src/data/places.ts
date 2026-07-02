@@ -257,8 +257,8 @@ export const PLACES: Place[] = [
     description:
       "A relaxed fishing village turned traveler hub inside San Vicente. Sandy lanes, island-hopping boats, beachfront cafés, and a slower rhythm made for unhurried travelers. Bring cash — ATMs are unreliable.",
     shortReason: "San Vicente's laid-back traveler village and boat-tour base.",
-    latitude: 10.4102,
-    longitude: 119.1771,
+    latitude: 10.468,
+    longitude: 119.2135,
     barangay: "Port Barton",
     imageUrl: "/images/san-vicente-port-barton.jpg",
     rating: 4.8,

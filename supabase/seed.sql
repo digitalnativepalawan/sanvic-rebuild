@@ -58,3 +58,19 @@ insert into public.local_updates (title, body, category, location, severity, sou
 ('Quiet right now: Alimanguan stretch', 'The northern beaches are near-empty on weekdays this month. If you want the sand to yourself, this is the window before the holiday season starts.', 'tip', 'Alimanguan', 'info', 'SANVIC conditions desk', now() - interval '30 hours', null),
 ('Pamuayan Falls flowing well', 'This week''s evening rain has the falls at their best flow of the month. Trail is a little slick in two spots — wear grippy footwear.', 'tip', 'Pamuayan', 'good', 'Local guides', now() - interval '40 hours', null),
 ('Heads up: barangay fiesta preparations', 'New Agutaya starts fiesta preparations next week — expect evening music near the barangay hall and busier eateries. Great time to try lechon if your trip overlaps.', 'event', 'New Agutaya', 'info', 'Barangay bulletin', now() - interval '50 hours', null);
+
+-- barangays
+insert into public.barangays (name, slug, description, latitude, longitude, label_visible, sort_order, is_active) values ('Poblacion', 'poblacion', 'Municipal center: market, transport terminals, airport, and Long Beach access.', 10.5318, 119.2822, true, 1, true);
+insert into public.barangays (name, slug, description, latitude, longitude, label_visible, sort_order, is_active) values ('New Agutaya', 'new-agutaya', 'Heart of the Long Beach stretch — garden stays and beachfront grills.', 10.5122, 119.266, true, 2, true);
+insert into public.barangays (name, slug, description, latitude, longitude, label_visible, sort_order, is_active) values ('San Isidro', 'san-isidro', 'Inland farms and hills northeast of the town center.', 10.567, 119.3187, true, 3, true);
+insert into public.barangays (name, slug, description, latitude, longitude, label_visible, sort_order, is_active) values ('Alimanguan', 'alimanguan', 'Fishing village with the wild, empty northern beaches.', 10.59, 119.33, true, 4, true);
+insert into public.barangays (name, slug, description, latitude, longitude, label_visible, sort_order, is_active) values ('Santo Niño', 'santo-nino', 'Quiet coastal barangay between Alimanguan and New Canipo.', 10.6506, 119.3348, true, 5, true);
+insert into public.barangays (name, slug, description, latitude, longitude, label_visible, sort_order, is_active) values ('New Canipo', 'new-canipo', 'Northern coast and the jump-off toward Boayan Island.', 10.6969, 119.3078, true, 6, true);
+insert into public.barangays (name, slug, description, latitude, longitude, label_visible, sort_order, is_active) values ('Binga', 'binga', 'San Vicente''s northernmost barangay.', 10.7612, 119.3144, true, 7, true);
+insert into public.barangays (name, slug, description, latitude, longitude, label_visible, sort_order, is_active) values ('Kemdeng', 'kemdeng', 'Between Poblacion and Port Barton — waterfalls and inland trails.', 10.4797, 119.2545, true, 8, true);
+insert into public.barangays (name, slug, description, latitude, longitude, label_visible, sort_order, is_active) values ('Port Barton', 'port-barton', 'The traveler village: island-hopping boats, bay beaches, café life.', 10.46, 119.195, true, 9, true);
+insert into public.barangays (name, slug, description, latitude, longitude, label_visible, sort_order, is_active) values ('Caruray', 'caruray', 'Remote southwestern coast and islands, bordering Puerto Princesa.', 10.3701, 119.0155, true, 10, true);
+
+-- Boundary polygons currently ship in the frontend
+-- (src/data/barangayBoundaries.ts, PSA-derived). Import them into
+-- barangay_boundaries when moving boundary editing server-side.
