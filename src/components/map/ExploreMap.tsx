@@ -24,19 +24,62 @@ import { LocationStatusChip } from "./LocationStatusChip";
 // measured from. The viewport is driven by real data: first load fits the
 // barangay boundary GeoJSON (+ valid place coordinates), and panning is
 // hard-limited to the Palawan region.
+//
+// Progressive disclosure keeps the overview beautiful instead of clustered:
+// at municipality zoom the destinations render as a quiet constellation of
+// small glowing category-colored dots; zooming in graduates featured places
+// and then everything to full pins. The selected place is always a full pin.
 
-function pinIcon(place: Place, active: boolean): L.DivIcon {
+type MarkerTier = "far" | "mid" | "near";
+
+function tierForZoom(zoom: number): MarkerTier {
+  if (zoom >= 13) return "near";
+  if (zoom >= 11) return "mid";
+  return "far";
+}
+
+function dotIcon(place: Place, size: number): L.DivIcon {
+  const meta = categoryMeta(place.category);
+  return L.divIcon({
+    className: "",
+    html: `<div class="sanvic-dot" style="width:${size}px;height:${size}px;background:${meta.color};box-shadow:0 0 ${size}px ${meta.color}99"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+function teardropIcon(place: Place, size: number, active: boolean): L.DivIcon {
   const meta = categoryMeta(place.category);
   const iconSvg = renderToStaticMarkup(
     <meta.icon size={active ? 15 : 11} color="#fff" strokeWidth={2.5} />,
   );
-  const size = active ? 34 : 22;
   return L.divIcon({
     className: "",
     html: `<div class="sanvic-pin ${active ? "sanvic-pin--active" : ""}" style="background:${meta.color}">${iconSvg}</div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size - 2],
   });
+}
+
+function placeIcon(place: Place, active: boolean, tier: MarkerTier): L.DivIcon {
+  if (active) return teardropIcon(place, 34, true);
+  if (tier === "near") return teardropIcon(place, 22, false);
+  if (tier === "mid") return place.isFeatured ? teardropIcon(place, 20, false) : dotIcon(place, 9);
+  return dotIcon(place, place.isFeatured ? 10 : 8);
+}
+
+// Publishes the current zoom so markers can re-tier on zoomend.
+function ZoomTracker({ onZoom }: { onZoom: (zoom: number) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    const handler = () => onZoom(map.getZoom());
+    handler();
+    map.on("zoomend", handler);
+    return () => {
+      map.off("zoomend", handler);
+    };
+  }, [map, onZoom]);
+  return null;
 }
 
 const poblacionIcon = L.divIcon({
@@ -112,17 +155,30 @@ export function ExploreMap({
   const initialBounds = useMemo(() => getSanVicenteBounds(places), [places]);
   const maxBounds = useMemo(() => getPalawanMaxBounds(), []);
 
+  const [zoom, setZoom] = useState(10);
+  const tier = tierForZoom(zoom);
+
   const markers = useMemo(
     () =>
-      places.map((p) => (
-        <Marker
-          key={p.id}
-          position={[p.latitude, p.longitude]}
-          icon={pinIcon(p, selected?.id === p.id)}
-          eventHandlers={{ click: () => onSelect(p) }}
-        />
-      )),
-    [places, selected, onSelect],
+      places.map((p) => {
+        const active = selected?.id === p.id;
+        return (
+          <Marker
+            key={p.id}
+            position={[p.latitude, p.longitude]}
+            icon={placeIcon(p, active, tier)}
+            zIndexOffset={active ? 300 : p.isFeatured ? 100 : 0}
+            eventHandlers={{ click: () => onSelect(p) }}
+          >
+            {!active && (
+              <Tooltip direction="top" offset={[0, tier === "near" ? -20 : -8]} opacity={0.95}>
+                {p.name}
+              </Tooltip>
+            )}
+          </Marker>
+        );
+      }),
+    [places, selected, onSelect, tier],
   );
 
   const tile = MAP_STYLES[mapStyle];
@@ -154,6 +210,7 @@ export function ExploreMap({
         </Marker>
         {markers}
         <UserLocationLayer />
+        <ZoomTracker onZoom={setZoom} />
         <FlyTo place={selected} />
         <InvalidateOnResize />
       </MapContainer>

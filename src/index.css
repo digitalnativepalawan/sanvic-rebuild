@@ -63,6 +63,23 @@
   color: #e8f0f7;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+.leaflet-tooltip {
+  background: rgba(7, 22, 39, 0.92);
+  color: #e8f0f7;
+  border: 1px solid rgba(103, 232, 249, 0.22);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 16px rgba(2, 12, 27, 0.5);
+}
+.leaflet-tooltip-top::before {
+  border-top-color: rgba(103, 232, 249, 0.35);
+}
+.leaflet-tooltip-bottom::before {
+  border-bottom-color: rgba(103, 232, 249, 0.35);
+}
 
 /* Category map pins — small, precise teardrops. Base 22px, selected 34px. */
 .sanvic-pin {
@@ -86,6 +103,18 @@
   outline: 3px solid rgba(34, 211, 238, 0.55);
   outline-offset: 1px;
   box-shadow: 0 3px 14px rgba(2, 12, 27, 0.7), 0 0 18px rgba(34, 211, 238, 0.35);
+}
+
+/* Constellation dots: the zoomed-out form of destination markers. Small
+   glowing category-colored points so the municipality overview reads as a
+   night-sky map, not a cluster of badges. */
+.sanvic-dot {
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  transition: transform 0.15s ease;
+}
+.sanvic-dot:hover {
+  transform: scale(1.5);
 }
 
 /* Barangay boundary labels: quiet uppercase tags on navy glass */
